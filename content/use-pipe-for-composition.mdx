@@ -1,0 +1,43 @@
+---
+title: "Use .pipe for Composition"
+id: "use-pipe-for-composition"
+skillLevel: "beginner"
+useCase: ["Core Concepts"]
+summary: "Use the .pipe() method to chain multiple operations onto an Effect in a readable, top-to-bottom sequence."
+tags: ["pipe", "composition", "chaining", "readability"]
+related: ["transform-effect-values"]
+author: "dillon_mulroy"
+---
+
+# Use .pipe for Composition
+
+## Guideline
+
+To apply a sequence of transformations or operations to an `Effect`, use the
+`.pipe()` method.
+
+## Rationale
+
+Piping makes code readable and avoids deeply nested function calls. It allows
+you to see the flow of data transformations in a clear, linear fashion.
+
+## Good Example
+
+```typescript
+import { Effect } from "effect";
+
+const program = Effect.succeed(5).pipe(
+  Effect.map((n) => n * 2),
+  Effect.map((n) => `The result is ${n}`),
+  Effect.tap(Effect.log),
+);
+```
+
+**Explanation:**  
+Using `.pipe()` allows you to compose operations in a top-to-bottom style,
+improving readability and maintainability.
+
+## Anti-Pattern
+
+Nesting function calls manually. This is hard to read and reorder.
+`Effect.tap(Effect.map(Effect.map(Effect.succeed(5), n => n * 2), n => ...))`

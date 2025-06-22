@@ -1,0 +1,49 @@
+---
+title: "Use Effect.gen for Business Logic"
+id: "use-gen-for-business-logic"
+skillLevel: "intermediate"
+useCase: ["Domain Modeling"]
+summary: "Encapsulate sequential business logic, control flow, and dependency access within Effect.gen for improved readability and maintainability."
+tags: ["generators", "business-logic", "control-flow", "readability"]
+related: ["use-pipe-for-composition", "avoid-long-andthen-chains"]
+author: "dillon_mulroy"
+---
+
+# Use Effect.gen for Business Logic
+
+## Guideline
+
+Use `Effect.gen` to write your core business logic, especially when it involves
+multiple sequential steps or conditional branching.
+
+## Rationale
+
+Generators provide a syntax that closely resembles standard synchronous code
+(`async/await`), making complex workflows significantly easier to read, write,
+and debug.
+
+## Good Example
+
+```typescript
+import { Effect } from "effect";
+
+declare const validateUser: (data: any) => Effect.Effect<any>;
+declare const hashPassword: (pw: string) => Effect.Effect<string>;
+declare const dbCreateUser: (data: any) => Effect.Effect<any>;
+
+const createUser = (userData: any) =>
+  Effect.gen(function* () {
+    const validated = yield* validateUser(userData);
+    const hashed = yield* hashPassword(validated.password);
+    return yield* dbCreateUser({ ...validated, password: hashed });
+  });
+```
+
+**Explanation:**  
+`Effect.gen` allows you to express business logic in a clear, sequential style,
+improving maintainability.
+
+## Anti-Pattern
+
+Using long chains of `.andThen` or `.flatMap` for multi-step business logic.
+This is harder to read and pass state between steps.

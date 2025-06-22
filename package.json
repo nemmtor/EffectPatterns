@@ -1,0 +1,26 @@
+{
+	"name": "effect-patterns-hub",
+	"version": "0.1.0",
+	"private": true,
+	"description": "A community-driven knowledge base for Effect-TS patterns.",
+	"scripts": {
+		"dev": "echo 'Development server not yet implemented'",
+		"build": "echo 'Build script not yet implemented'",
+		"start": "echo 'Start script not yet implemented'"
+	},
+	"dependencies": {
+		"effect": "^3.4.4"
+	},
+	"devDependencies": {
+		"typescript": "^5.5.2",
+		"tsx": "^4.15.7"
+	},
+	"keywords": [
+		"effect",
+		"effect-ts",
+		"typescript",
+		"patterns"
+	],
+	"author": "Paul",
+	"license": "MIT"
+}

@@ -1,0 +1,56 @@
+---
+title: "Create a Managed Runtime for Scoped Resources"
+id: "create-managed-runtime-for-scoped-resources"
+skillLevel: "advanced"
+useCase: ["Project Setup & Execution", "API Development"]
+summary: "Use Layer.launch to safely manage the lifecycle of layers containing scoped resources, ensuring finalizers are always run."
+tags: ["runtime", "scope", "resource-management", "layers", "scoped", "finalizer", "launch"]
+related: ["create-reusable-runtime-from-layers"]
+author: "sandro_volpicella"
+---
+
+# Create a Managed Runtime for Scoped Resources
+
+## Guideline
+
+For services that manage resources needing explicit cleanup (e.g., a database
+connection), define them in a `Layer` using `Layer.scoped`. Then, use
+`Layer.launch` to provide this layer to your application.
+
+## Rationale
+
+`Layer.launch` is designed for resource safety. It acquires all resources,
+provides them to your effect, and—crucially—guarantees that all registered
+finalizers are executed upon completion or interruption.
+
+## Good Example
+
+```typescript
+import { Effect, Layer } from "effect";
+
+class DatabasePool extends Effect.Tag("DbPool")<DatabasePool, any> {}
+
+const DatabaseLive = Layer.scoped(
+  DatabasePool,
+  Effect.acquireRelease(
+    Effect.log("Acquiring pool"),
+    () => Effect.log("Releasing pool"),
+  ),
+);
+
+const launchedApp = Layer.launch(
+  Effect.provide(Effect.log("Using DB"), DatabaseLive)
+);
+
+Effect.runPromise(launchedApp);
+```
+
+**Explanation:**  
+`Layer.launch` ensures that resources are acquired and released safely, even
+in the event of errors or interruptions.
+
+## Anti-Pattern
+
+Do not use `Layer.toRuntime` with layers that contain scoped resources. This
+will acquire the resource, but the runtime has no mechanism to release it,
+leading to resource leaks.

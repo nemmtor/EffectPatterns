@@ -1,0 +1,41 @@
+---
+title: "Model Dependencies as Services"
+id: "model-dependencies-as-services"
+skillLevel: "intermediate"
+useCase: ["API Development", "Testing"]
+summary: "Abstract external dependencies and capabilities into swappable, testable services using Effect's dependency injection system."
+tags: ["service", "architecture", "dependency-injection", "layers", "testing", "decoupling"]
+related: ["define-service-with-effect-service", "use-default-layer-for-tests"]
+author: "sandro_volpicella"
+---
+
+# Model Dependencies as Services
+
+## Guideline
+
+Represent any external dependency or distinct capability—from a database client to a simple UUID generator—as a service.
+
+## Rationale
+
+This pattern is the key to testability. It allows you to provide a `Live` implementation in production and a `Test` implementation (returning mock data) in your tests, making your code decoupled and reliable.
+
+## Good Example
+
+```typescript
+import { Effect, Layer } from "effect";
+
+class Random extends Effect.Tag("Random")<Random, { readonly next: Effect.Effect<number> }> {}
+
+// For production
+const RandomLive = Layer.succeed(Random, { next: Effect.sync(() => Math.random()) });
+
+// For testing
+const RandomTest = Layer.succeed(Random, { next: Effect.succeed(0.5) });
+```
+
+**Explanation:**  
+By modeling dependencies as services, you can easily substitute mocked or deterministic implementations for testing, leading to more reliable and predictable tests.
+
+## Anti-Pattern
+
+Directly calling external APIs like `fetch` or using impure functions like `Math.random()` within your business logic. This tightly couples your logic to a specific implementation and makes it difficult to test.

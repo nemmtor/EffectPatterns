@@ -6,7 +6,7 @@
 
 **Skill Level:** intermediate
 
-**Use Cases:** Application Configuration
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -55,7 +55,7 @@ This allows your business logic to declaratively state its dependency on a piece
 
 **Skill Level:** intermediate
 
-**Use Cases:** Modeling Time, Testing
+**Use Cases:** testing
 
 ### Good Example
 
@@ -159,64 +159,11 @@ This makes any time-dependent logic pure, deterministic, and easy to test with p
 
 ## Accumulate Multiple Errors with Either
 
-**Rule:** Use Either to model computations that may fail, making errors explicit and type-safe.
-
-**Skill Level:** beginner
-
-**Use Cases:** Data Types, Error Handling, Domain Modeling
-
-### Good Example
-
-```typescript
-import { Either } from "effect";
-
-// Create a Right (success) or Left (failure)
-const success = Either.right(42); // Either<never, number>
-const failure = Either.left("Something went wrong"); // Either<string, never>
-
-// Pattern match on Either
-const result = success.pipe(
-  Either.match({
-    onLeft: (err) => `Error: ${err}`,
-    onRight: (value) => `Value: ${value}`,
-  })
-); // string
-
-// Combine multiple Eithers and accumulate errors
-const e1 = Either.right(1);
-const e2 = Either.left("fail1");
-const e3 = Either.left("fail2");
-
-const all = Either.all([e1, e2, e3]); // Either<string, [number, never, never]>
-const rights = [e1, e2, e3].filter(Either.isRight); // Right values only
-const lefts = [e1, e2, e3].filter(Either.isLeft); // Left values only
-
-```
-
-**Explanation:**  
-- `Either.right(value)` represents success.
-- `Either.left(error)` represents failure.
-- Pattern matching ensures all cases are handled.
-- You can accumulate errors or results from multiple Eithers.
-
-### Anti-Pattern
-
-Throwing exceptions or using ad-hoc error codes, which are not type-safe, not composable, and make error handling less predictable.
-
-### Explanation
-
-`Either` is a foundational data type for error handling in functional programming.  
-It allows you to accumulate errors, model domain-specific failures, and avoid exceptions and unchecked errors.
-
----
-
-## Accumulate Multiple Errors with Either
-
 **Rule:** Use Either to accumulate multiple validation errors instead of failing on the first one.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -339,13 +286,66 @@ However, for tasks like validating a user's input, this is poor user experience.
 
 ---
 
+## Accumulate Multiple Errors with Either
+
+**Rule:** Use Either to model computations that may fail, making errors explicit and type-safe.
+
+**Skill Level:** beginner
+
+**Use Cases:** domain-modeling
+
+### Good Example
+
+```typescript
+import { Either } from "effect";
+
+// Create a Right (success) or Left (failure)
+const success = Either.right(42); // Either<never, number>
+const failure = Either.left("Something went wrong"); // Either<string, never>
+
+// Pattern match on Either
+const result = success.pipe(
+  Either.match({
+    onLeft: (err) => `Error: ${err}`,
+    onRight: (value) => `Value: ${value}`,
+  })
+); // string
+
+// Combine multiple Eithers and accumulate errors
+const e1 = Either.right(1);
+const e2 = Either.left("fail1");
+const e3 = Either.left("fail2");
+
+const all = Either.all([e1, e2, e3]); // Either<string, [number, never, never]>
+const rights = [e1, e2, e3].filter(Either.isRight); // Right values only
+const lefts = [e1, e2, e3].filter(Either.isLeft); // Left values only
+
+```
+
+**Explanation:**  
+- `Either.right(value)` represents success.
+- `Either.left(error)` represents failure.
+- Pattern matching ensures all cases are handled.
+- You can accumulate errors or results from multiple Eithers.
+
+### Anti-Pattern
+
+Throwing exceptions or using ad-hoc error codes, which are not type-safe, not composable, and make error handling less predictable.
+
+### Explanation
+
+`Either` is a foundational data type for error handling in functional programming.  
+It allows you to accumulate errors, model domain-specific failures, and avoid exceptions and unchecked errors.
+
+---
+
 ## Add Caching by Wrapping a Layer
 
 **Rule:** Use a wrapping Layer to add cross-cutting concerns like caching to a service without altering its original implementation.
 
 **Skill Level:** advanced
 
-**Use Cases:** Making HTTP Requests, Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -459,11 +459,70 @@ This approach is powerful because:
 
 ## Add Custom Metrics to Your Application
 
+**Rule:** Use Effect's Metric module to define and update custom metrics for business and performance monitoring.
+
+**Skill Level:** intermediate
+
+**Use Cases:** observability
+
+### Good Example
+
+```typescript
+import { Effect, Metric, MetricBoundaries } from "effect";
+
+// Define a counter metric for processed jobs
+const jobsProcessed = Metric.counter("jobs_processed");
+
+// Increment the counter when a job is processed
+const processJob = Effect.gen(function* () {
+  // ... process the job
+  yield* Effect.log("Job processed");
+  yield* Metric.increment(jobsProcessed);
+});
+
+// Define a gauge for current active users
+const activeUsers = Metric.gauge("active_users");
+
+// Update the gauge when users sign in or out
+const userSignedIn = Metric.set(activeUsers, 1);
+const userSignedOut = Metric.set(activeUsers, -1);
+
+// Define a histogram for request durations
+const requestDuration = Metric.histogram(
+  "request_duration",
+  MetricBoundaries.linear({ start: 0, width: 1, count: 6 })
+);
+
+// Record a request duration
+const recordDuration = (duration: number) =>
+  Metric.update(requestDuration, duration);
+
+```
+
+**Explanation:**  
+- `Metric.counter` tracks counts of events.
+- `Metric.gauge` tracks a value that can go up or down (e.g., active users).
+- `Metric.histogram` tracks distributions (e.g., request durations).
+- `Effect.updateMetric` updates the metric in your workflow.
+
+### Anti-Pattern
+
+Relying solely on logs for monitoring, or using ad-hoc counters and variables that are not integrated with your observability stack.
+
+### Explanation
+
+Metrics provide quantitative insight into your application's behavior and performance.  
+By instrumenting your code with metrics, you can monitor key events, detect anomalies, and drive business decisions.
+
+---
+
+## Add Custom Metrics to Your Application
+
 **Rule:** Use Metric.counter, Metric.gauge, and Metric.histogram to instrument code for monitoring.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Observability, Making HTTP Requests
+**Use Cases:** observability
 
 ### Good Example
 
@@ -530,72 +589,13 @@ This allows you to answer questions like:
 
 ---
 
-## Add Custom Metrics to Your Application
-
-**Rule:** Use Effect's Metric module to define and update custom metrics for business and performance monitoring.
-
-**Skill Level:** intermediate
-
-**Use Cases:** Observability, Metrics, Monitoring, Performance
-
-### Good Example
-
-```typescript
-import { Effect, Metric, MetricBoundaries } from "effect";
-
-// Define a counter metric for processed jobs
-const jobsProcessed = Metric.counter("jobs_processed");
-
-// Increment the counter when a job is processed
-const processJob = Effect.gen(function* () {
-  // ... process the job
-  yield* Effect.log("Job processed");
-  yield* Metric.increment(jobsProcessed);
-});
-
-// Define a gauge for current active users
-const activeUsers = Metric.gauge("active_users");
-
-// Update the gauge when users sign in or out
-const userSignedIn = Metric.set(activeUsers, 1);
-const userSignedOut = Metric.set(activeUsers, -1);
-
-// Define a histogram for request durations
-const requestDuration = Metric.histogram(
-  "request_duration",
-  MetricBoundaries.linear({ start: 0, width: 1, count: 6 })
-);
-
-// Record a request duration
-const recordDuration = (duration: number) =>
-  Metric.update(requestDuration, duration);
-
-```
-
-**Explanation:**  
-- `Metric.counter` tracks counts of events.
-- `Metric.gauge` tracks a value that can go up or down (e.g., active users).
-- `Metric.histogram` tracks distributions (e.g., request durations).
-- `Effect.updateMetric` updates the metric in your workflow.
-
-### Anti-Pattern
-
-Relying solely on logs for monitoring, or using ad-hoc counters and variables that are not integrated with your observability stack.
-
-### Explanation
-
-Metrics provide quantitative insight into your application's behavior and performance.  
-By instrumenting your code with metrics, you can monitor key events, detect anomalies, and drive business decisions.
-
----
-
 ## Automatically Retry Failed Operations
 
 **Rule:** Compose a Stream with the .retry(Schedule) operator to automatically recover from transient failures.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -729,7 +729,7 @@ The `retry` operator, combined with the `Schedule` module, provides a powerful a
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -793,7 +793,7 @@ debug than deeply nested functional chains.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Modeling Time
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -878,7 +878,7 @@ This makes your time-based logic pure, predictable, and easy to test.
 
 **Skill Level:** advanced
 
-**Use Cases:** Making HTTP Requests
+**Use Cases:** making-http-requests
 
 ### Good Example
 
@@ -952,7 +952,7 @@ This architecture ensures that your request handling logic is fully testable, be
 
 **Skill Level:** beginner
 
-**Use Cases:** Combinators, Composition, Sequencing
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -1001,7 +1001,7 @@ It allows you to express workflows where each step may fail, be optional, or pro
 
 **Skill Level:** beginner
 
-**Use Cases:** Pattern Matching, Option, Either, Branching, Checks
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -1055,7 +1055,7 @@ These predicates provide a concise, type-safe way to check which case you have, 
 
 **Skill Level:** beginner
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -1139,7 +1139,7 @@ The result of `Stream.runCollect` is an `Effect` that, when executed, yields a `
 
 **Skill Level:** beginner
 
-**Use Cases:** Combinators, Composition, Pairing
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -1193,7 +1193,7 @@ It preserves error handling and context, and keeps your code declarative and typ
 
 **Skill Level:** beginner
 
-**Use Cases:** Data Types, Structural Equality, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -1235,7 +1235,7 @@ JavaScript objects are compared by reference, which can lead to subtle bugs when
 
 **Skill Level:** beginner
 
-**Use Cases:** Modeling Data
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -1323,7 +1323,7 @@ Effect solves this with **structural equality**. All of Effect's built-in data s
 
 **Skill Level:** intermediate
 
-**Use Cases:** Application Architecture, Resource Management, Dependency Injection
+**Use Cases:** resource-management
 
 ### Good Example
 
@@ -1431,7 +1431,7 @@ This automates one of the most complex and error-prone parts of application arch
 
 **Skill Level:** beginner
 
-**Use Cases:** Combinators, Composition, Conditional Logic
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -1479,7 +1479,7 @@ It also ensures that error handling and context propagation are preserved, and t
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts, Error Management
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -1606,7 +1606,7 @@ Using these operators turns conditional logic into a composable part of your `Ef
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -1656,7 +1656,7 @@ These combinators allow you to embed conditional logic directly into your
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts, Error Management, Concurrency
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -1753,7 +1753,7 @@ While you could write manual loops or recursive functions, `Schedule` provides a
 
 **Skill Level:** beginner
 
-**Use Cases:** Constructors, Interop, Conversion
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -1800,7 +1800,7 @@ Converting to Effect, Stream, Option, or Either lets you use all the combinators
 
 **Skill Level:** beginner
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -1934,7 +1934,7 @@ This approach provides several key benefits:
 
 **Skill Level:** advanced
 
-**Use Cases:** Project Setup & Execution, Making HTTP Requests, Resource Management
+**Use Cases:** resource-management
 
 ### Good Example
 
@@ -1993,7 +1993,7 @@ finalizers are executed upon completion or interruption.
 
 **Skill Level:** advanced
 
-**Use Cases:** Project Setup & Execution
+**Use Cases:** project-setup--execution
 
 ### Good Example
 
@@ -2043,7 +2043,7 @@ long-running applications.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Resource Management, Dependency Injection, Application Architecture
+**Use Cases:** resource-management
 
 ### Good Example
 
@@ -2130,7 +2130,7 @@ This pattern is the key to building robust, testable, and leak-proof application
 
 **Skill Level:** beginner
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -2200,7 +2200,7 @@ This pattern is fundamental for several reasons:
 
 **Skill Level:** intermediate
 
-**Use Cases:** Making HTTP Requests, Testing
+**Use Cases:** making-http-requests
 
 ### Good Example
 
@@ -2371,7 +2371,7 @@ By abstracting the HTTP client into a service, you decouple your application's l
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -2428,7 +2428,7 @@ values within functions that must return an `Effect`.
 
 **Skill Level:** beginner
 
-**Use Cases:** Constructors, Collections, Streams, Batch Processing
+**Use Cases:** resource-management
 
 ### Good Example
 
@@ -2472,7 +2472,7 @@ It also enables you to use all of Effect's combinators for transformation, filte
 
 **Skill Level:** beginner
 
-**Use Cases:** Constructors, Interop, Async, Callback
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -2520,7 +2520,7 @@ By lifting them into Effects, you gain access to all of Effect's combinators, er
 
 **Skill Level:** advanced
 
-**Use Cases:** Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -2699,7 +2699,7 @@ Furthermore, bounded `Queue`s and `PubSub`s provide automatic **back-pressure**.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Application Configuration
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -2755,7 +2755,7 @@ This creates a single, type-safe source of truth for your configuration, elimina
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -2854,7 +2854,7 @@ compile-time static types and runtime validation.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -2927,7 +2927,7 @@ type-safe.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -3027,7 +3027,7 @@ By using `Option` inside the success channel of an `Effect`, you keep the error 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Pattern Matching, Effectful Branching, Error Handling
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -3064,7 +3064,7 @@ Sometimes, handling a success or failure requires running additional Effects (e.
 
 **Skill Level:** beginner
 
-**Use Cases:** Project Setup & Execution
+**Use Cases:** project-setup--execution
 
 ### Good Example
 
@@ -3109,7 +3109,7 @@ if it fails, the Promise rejects.
 
 **Skill Level:** advanced
 
-**Use Cases:** Project Setup & Execution, Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -3172,7 +3172,7 @@ The most critical use case for this is enabling graceful shutdown. You can start
 
 **Skill Level:** beginner
 
-**Use Cases:** Project Setup & Execution
+**Use Cases:** project-setup--execution
 
 ### Good Example
 
@@ -3255,7 +3255,7 @@ asynchronous operations. If the Effect contains any async operations,
 
 **Skill Level:** beginner
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -3400,7 +3400,7 @@ By defining parameters directly in the path string, you gain several benefits:
 
 **Skill Level:** beginner
 
-**Use Cases:** Combinators, Composition, Conditional Logic
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -3456,7 +3456,7 @@ It keeps your code composable and type-safe, and ensures that failures or empty 
 
 **Skill Level:** beginner
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -3620,7 +3620,7 @@ This approach has several advantages:
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -3870,7 +3870,7 @@ Centralizing error handling at the server level provides a clean separation of c
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -4021,7 +4021,7 @@ scenarios with different logic in a type-safe way.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -4170,11 +4170,66 @@ Combining these two patterns is a best practice for any interaction with an exte
 
 ## Handle Unexpected Errors by Inspecting the Cause
 
+**Rule:** Use Cause to inspect, analyze, and handle all possible failure modes of an Effect, including expected errors, defects, and interruptions.
+
+**Skill Level:** advanced
+
+**Use Cases:** error-management
+
+### Good Example
+
+```typescript
+import { Cause, Effect } from "effect";
+
+// An Effect that may fail with an error or defect
+const program = Effect.try({
+  try: () => {
+    throw new Error("Unexpected failure!");
+  },
+  catch: (err) => err,
+});
+
+// Catch all causes and inspect them
+const handled = program.pipe(
+  Effect.catchAllCause((cause) =>
+    Effect.sync(() => {
+      if (Cause.isDie(cause)) {
+        console.error("Defect (die):", Cause.pretty(cause));
+      } else if (Cause.isFailure(cause)) {
+        console.error("Expected error:", Cause.pretty(cause));
+      } else if (Cause.isInterrupted(cause)) {
+        console.error("Interrupted:", Cause.pretty(cause));
+      }
+      // Handle or rethrow as needed
+    })
+  )
+);
+
+```
+
+**Explanation:**  
+- `Cause` distinguishes between expected errors (`fail`), defects (`die`), and interruptions.
+- Use `Cause.pretty` for human-readable error traces.
+- Enables advanced error handling and debugging.
+
+### Anti-Pattern
+
+Catching only expected errors and ignoring defects or interruptions, which can lead to silent failures, missed bugs, and harder debugging.
+
+### Explanation
+
+Traditional error handling often loses information about *why* a failure occurred.  
+`Cause` preserves the full error context, enabling advanced debugging, error reporting, and robust recovery strategies.
+
+---
+
+## Handle Unexpected Errors by Inspecting the Cause
+
 **Rule:** Handle unexpected errors by inspecting the cause.
 
 **Skill Level:** advanced
 
-**Use Cases:** Error Management
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -4466,68 +4521,13 @@ thrown exception). They should be handled differently.
 
 ---
 
-## Handle Unexpected Errors by Inspecting the Cause
-
-**Rule:** Use Cause to inspect, analyze, and handle all possible failure modes of an Effect, including expected errors, defects, and interruptions.
-
-**Skill Level:** advanced
-
-**Use Cases:** Data Types, Error Handling, Debugging, Effect Results
-
-### Good Example
-
-```typescript
-import { Cause, Effect } from "effect";
-
-// An Effect that may fail with an error or defect
-const program = Effect.try({
-  try: () => {
-    throw new Error("Unexpected failure!");
-  },
-  catch: (err) => err,
-});
-
-// Catch all causes and inspect them
-const handled = program.pipe(
-  Effect.catchAllCause((cause) =>
-    Effect.sync(() => {
-      if (Cause.isDie(cause)) {
-        console.error("Defect (die):", Cause.pretty(cause));
-      } else if (Cause.isFailure(cause)) {
-        console.error("Expected error:", Cause.pretty(cause));
-      } else if (Cause.isInterrupted(cause)) {
-        console.error("Interrupted:", Cause.pretty(cause));
-      }
-      // Handle or rethrow as needed
-    })
-  )
-);
-
-```
-
-**Explanation:**  
-- `Cause` distinguishes between expected errors (`fail`), defects (`die`), and interruptions.
-- Use `Cause.pretty` for human-readable error traces.
-- Enables advanced error handling and debugging.
-
-### Anti-Pattern
-
-Catching only expected errors and ignoring defects or interruptions, which can lead to silent failures, missed bugs, and harder debugging.
-
-### Explanation
-
-Traditional error handling often loses information about *why* a failure occurred.  
-`Cause` preserves the full error context, enabling advanced debugging, error reporting, and robust recovery strategies.
-
----
-
 ## Handling Errors with catchAll, orElse, and match
 
 **Rule:** Use error handling combinators to recover from failures, provide fallback values, or transform errors in a composable way.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Combinators, Error Handling, Composition
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -4580,7 +4580,7 @@ By using combinators, you keep error recovery logic close to where errors may oc
 
 **Skill Level:** intermediate
 
-**Use Cases:** Pattern Matching, Error Handling, Tagged Unions
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -4631,7 +4631,7 @@ By matching on specific error tags, you can provide targeted recovery logic for 
 
 **Skill Level:** advanced
 
-**Use Cases:** Concurrency, Resource Management
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -4738,7 +4738,7 @@ By launching your app with `runFork`, you get a `Fiber` that represents the enti
 
 **Skill Level:** intermediate
 
-**Use Cases:** Observability, Instrumentation, Function Calls, Debugging
+**Use Cases:** observability
 
 ### Good Example
 
@@ -4791,7 +4791,7 @@ Instrumenting function calls is essential for observability, especially in compl
 
 **Skill Level:** advanced
 
-**Use Cases:** Observability, Tracing, OpenTelemetry, Distributed Systems
+**Use Cases:** observability
 
 ### Good Example
 
@@ -4843,11 +4843,51 @@ By integrating Effect's spans with OpenTelemetry, you gain deep visibility into 
 
 ## Leverage Effect's Built-in Structured Logging
 
+**Rule:** Leverage Effect's built-in structured logging.
+
+**Skill Level:** intermediate
+
+**Use Cases:** error-management
+
+### Good Example
+
+```typescript
+import { Effect } from "effect";
+
+const program = Effect.logDebug("Processing user", { userId: 123 });
+
+// Run the program with debug logging enabled
+Effect.runSync(
+  program.pipe(
+    Effect.tap(() => Effect.log("Debug logging enabled"))
+  )
+);
+```
+
+**Explanation:**  
+Using Effect's logging system ensures your logs are structured, filterable,
+and context-aware.
+
+### Anti-Pattern
+
+Calling `console.log` directly within an Effect composition. This is an
+unmanaged side-effect that bypasses all the benefits of Effect's logging system.
+
+### Explanation
+
+Effect's logger is structured, context-aware (with trace IDs), configurable
+via `Layer`, and testable. It's a first-class citizen, not an unmanaged
+side-effect.
+
+---
+
+## Leverage Effect's Built-in Structured Logging
+
 **Rule:** Use Effect.log, Effect.logInfo, and Effect.logError to add structured, context-aware logging to your Effect code.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Observability, Logging, Debugging
+**Use Cases:** observability
 
 ### Good Example
 
@@ -4891,53 +4931,13 @@ Effect’s logging functions are context-aware, meaning they automatically inclu
 
 ---
 
-## Leverage Effect's Built-in Structured Logging
-
-**Rule:** Leverage Effect's built-in structured logging.
-
-**Skill Level:** intermediate
-
-**Use Cases:** Error Management
-
-### Good Example
-
-```typescript
-import { Effect } from "effect";
-
-const program = Effect.logDebug("Processing user", { userId: 123 });
-
-// Run the program with debug logging enabled
-Effect.runSync(
-  program.pipe(
-    Effect.tap(() => Effect.log("Debug logging enabled"))
-  )
-);
-```
-
-**Explanation:**  
-Using Effect's logging system ensures your logs are structured, filterable,
-and context-aware.
-
-### Anti-Pattern
-
-Calling `console.log` directly within an Effect composition. This is an
-unmanaged side-effect that bypasses all the benefits of Effect's logging system.
-
-### Explanation
-
-Effect's logger is structured, context-aware (with trace IDs), configurable
-via `Layer`, and testable. It's a first-class citizen, not an unmanaged
-side-effect.
-
----
-
 ## Lifting Errors and Absence with fail, none, and left
 
 **Rule:** Use fail, none, and left to create Effect, Option, or Either that represent failure or absence.
 
 **Skill Level:** beginner
 
-**Use Cases:** Constructors, Lifting, Error Handling, Absence
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -4977,7 +4977,7 @@ This leads to more robust and maintainable code.
 
 **Skill Level:** beginner
 
-**Use Cases:** Constructors, Lifting, Composition
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -5016,7 +5016,7 @@ Lifting values into these structures allows you to compose them with other effec
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -5144,7 +5144,7 @@ An API server often needs to communicate with other services. While you could us
 
 **Skill Level:** advanced
 
-**Use Cases:** Resource Management, Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -5226,7 +5226,7 @@ This is especially critical in concurrent applications. When a parent fiber is i
 
 **Skill Level:** advanced
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -5379,7 +5379,7 @@ What happens if a pipeline processing a file fails halfway through? In a naive i
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts, Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -5463,7 +5463,7 @@ Directly using a mutable variable (e.g., `let myState = ...`) in a concurrent sy
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, State, Concurrency, Mutable State
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -5516,7 +5516,7 @@ Managing shared state with plain variables or objects is unsafe in concurrent or
 
 **Skill Level:** advanced
 
-**Use Cases:** Resource Management, Advanced Dependency Injection, Custom Layers
+**Use Cases:** resource-management
 
 ### Good Example
 
@@ -5609,7 +5609,7 @@ By interacting with `Scope` directly, you gain precise, imperative-style control
 
 **Skill Level:** intermediate
 
-**Use Cases:** Combinators, Collections, Parallelism, Batch Processing
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -5662,7 +5662,7 @@ These combinators let you express "do this for every item" declaratively, withou
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -5763,7 +5763,7 @@ By using `Effect.mapError`, the outer layer can define its own, more abstract er
 
 **Skill Level:** beginner
 
-**Use Cases:** Pattern Matching, Error Handling, Branching
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -5816,7 +5816,7 @@ It avoids scattered if/else or switch statements and makes your intent explicit.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Pattern Matching, Tagged Unions, Error Handling, Branching
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -5865,7 +5865,7 @@ Pattern matching on tags lets you handle each case explicitly, making your code 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Testing
+**Use Cases:** testing
 
 ### Good Example
 
@@ -5982,7 +5982,7 @@ By providing a mock `Layer` in your test, you replace a real dependency (like an
 
 **Skill Level:** intermediate
 
-**Use Cases:** Making HTTP Requests, Testing
+**Use Cases:** making-http-requests
 
 ### Good Example
 
@@ -6032,63 +6032,11 @@ This pattern is the key to testability. It allows you to provide a `Live` implem
 
 ## Model Optional Values Safely with Option
 
-**Rule:** Use Option to model values that may be present or absent, making absence explicit and type-safe.
-
-**Skill Level:** beginner
-
-**Use Cases:** Data Types, Domain Modeling, Optional Values
-
-### Good Example
-
-```typescript
-import { Option } from "effect";
-
-// Create an Option from a value
-const someValue = Option.some(42); // Option<number>
-const noValue = Option.none(); // Option<never>
-
-// Safely convert a nullable value to Option
-const fromNullable = Option.fromNullable(Math.random() > 0.5 ? "hello" : null); // Option<string>
-
-// Pattern match on Option
-const result = someValue.pipe(
-  Option.match({
-    onNone: () => "No value",
-    onSome: (n) => `Value: ${n}`,
-  })
-); // string
-
-// Use Option in a workflow
-function findUser(id: number): Option.Option<{ id: number; name: string }> {
-  return id === 1 ? Option.some({ id, name: "Alice" }) : Option.none();
-}
-
-```
-
-**Explanation:**  
-- `Option.some(value)` represents a present value.
-- `Option.none()` represents absence.
-- `Option.fromNullable` safely lifts nullable values into Option.
-- Pattern matching ensures all cases are handled.
-
-### Anti-Pattern
-
-Using `null` or `undefined` to represent absence, or forgetting to handle the "no value" case, which leads to runtime errors and less maintainable code.
-
-### Explanation
-
-`Option` makes it impossible to forget to handle the "no value" case.  
-It improves code safety, readability, and composability, and is a foundation for robust domain modeling.
-
----
-
-## Model Optional Values Safely with Option
-
 **Rule:** Use Option<A> to explicitly model values that may be absent, avoiding null or undefined.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling, Error Management
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -6163,13 +6111,65 @@ The `Option` type solves this by making the possibility of an absent value expli
 
 ---
 
+## Model Optional Values Safely with Option
+
+**Rule:** Use Option to model values that may be present or absent, making absence explicit and type-safe.
+
+**Skill Level:** beginner
+
+**Use Cases:** domain-modeling
+
+### Good Example
+
+```typescript
+import { Option } from "effect";
+
+// Create an Option from a value
+const someValue = Option.some(42); // Option<number>
+const noValue = Option.none(); // Option<never>
+
+// Safely convert a nullable value to Option
+const fromNullable = Option.fromNullable(Math.random() > 0.5 ? "hello" : null); // Option<string>
+
+// Pattern match on Option
+const result = someValue.pipe(
+  Option.match({
+    onNone: () => "No value",
+    onSome: (n) => `Value: ${n}`,
+  })
+); // string
+
+// Use Option in a workflow
+function findUser(id: number): Option.Option<{ id: number; name: string }> {
+  return id === 1 ? Option.some({ id, name: "Alice" }) : Option.none();
+}
+
+```
+
+**Explanation:**  
+- `Option.some(value)` represents a present value.
+- `Option.none()` represents absence.
+- `Option.fromNullable` safely lifts nullable values into Option.
+- Pattern matching ensures all cases are handled.
+
+### Anti-Pattern
+
+Using `null` or `undefined` to represent absence, or forgetting to handle the "no value" case, which leads to runtime errors and less maintainable code.
+
+### Explanation
+
+`Option` makes it impossible to forget to handle the "no value" case.  
+It improves code safety, readability, and composability, and is a foundation for robust domain modeling.
+
+---
+
 ## Model Validated Domain Types with Brand
 
 **Rule:** Model validated domain types with Brand.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -6209,7 +6209,7 @@ eliminating repetitive checks.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Effect Results, Error Handling, Concurrency
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -6253,7 +6253,7 @@ When running or supervising effects, you often need to know not just if they suc
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Tagged Unions, ADTs, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -6308,7 +6308,7 @@ Modeling domain logic with tagged unions ensures that all cases are handled, pre
 
 **Skill Level:** intermediate
 
-**Use Cases:** Branded Types, Domain Modeling, Type Safety
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -6353,7 +6353,7 @@ They help you catch bugs at compile time and make your code more self-documentin
 
 **Skill Level:** advanced
 
-**Use Cases:** Testing
+**Use Cases:** testing
 
 ### Good Example
 
@@ -6522,7 +6522,7 @@ This approach creates a clean, scalable, and highly testable architecture where 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -6590,7 +6590,7 @@ failures gracefully with operators like `Effect.catchTag`.
 
 **Skill Level:** advanced
 
-**Use Cases:** Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -6673,7 +6673,7 @@ This creates a self-contained, declarative, and leak-free unit of work.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -6749,7 +6749,7 @@ Running `Effect.all` on a large array of tasks is dangerous. If you have 1,000 i
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -6870,7 +6870,7 @@ The `Stream.fromReadable` constructor provides a bridge from Node.js's built-in 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -6949,7 +6949,7 @@ The primary benefits of using `Stream` are:
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -7063,7 +7063,7 @@ For many data pipelines, the most time-consuming step is performing an I/O-bound
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -7151,7 +7151,7 @@ When interacting with external systems like databases or APIs, making one reques
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -7264,7 +7264,7 @@ Loading all this data into memory at once would be inefficient or impossible. `S
 
 **Skill Level:** intermediate
 
-**Use Cases:** Application Configuration
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -7316,7 +7316,7 @@ Integrating configuration as a `Layer` plugs it directly into Effect's dependenc
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -7456,7 +7456,7 @@ Effect's dependency injection system (`Service` and `Layer`) solves this by deco
 
 **Skill Level:** intermediate
 
-**Use Cases:** Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -7578,7 +7578,7 @@ This is commonly used for:
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Security, Sensitive Data, Logging
+**Use Cases:** observability
 
 ### Good Example
 
@@ -7617,55 +7617,11 @@ Sensitive data should never appear in logs, traces, or error messages.
 
 ## Representing Time Spans with Duration
 
-**Rule:** Use Duration to model and manipulate time spans, enabling safe and expressive time-based logic.
-
-**Skill Level:** intermediate
-
-**Use Cases:** Data Types, Time, Duration, Domain Modeling
-
-### Good Example
-
-```typescript
-import { Duration } from "effect";
-
-// Create durations using helpers
-const oneSecond = Duration.seconds(1);
-const fiveMinutes = Duration.minutes(5);
-const twoHours = Duration.hours(2);
-
-// Add, subtract, and compare durations
-const total = Duration.sum(oneSecond, fiveMinutes); // 5 min 1 sec
-const isLonger = Duration.greaterThan(twoHours, fiveMinutes); // true
-
-// Convert to milliseconds or human-readable format
-const ms = Duration.toMillis(fiveMinutes); // 300000
-const readable = Duration.format(oneSecond); // "1s"
-
-```
-
-**Explanation:**  
-- `Duration` is immutable and type-safe.
-- Use helpers for common intervals and arithmetic for composition.
-- Prefer `Duration` over raw numbers for all time-based logic.
-
-### Anti-Pattern
-
-Using raw numbers (e.g., `5000` for 5 seconds) for time intervals, which is error-prone, hard to read, and less maintainable.
-
-### Explanation
-
-Working with raw numbers for time intervals (e.g., milliseconds) is error-prone and hard to read.  
-`Duration` provides a clear, expressive API for modeling time spans, improving code safety and maintainability.
-
----
-
-## Representing Time Spans with Duration
-
 **Rule:** Use the Duration data type to represent time intervals instead of raw numbers.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Modeling Time
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -7748,13 +7704,57 @@ Using raw numbers to represent time is a common source of bugs and confusion. Wh
 
 ---
 
+## Representing Time Spans with Duration
+
+**Rule:** Use Duration to model and manipulate time spans, enabling safe and expressive time-based logic.
+
+**Skill Level:** intermediate
+
+**Use Cases:** domain-modeling
+
+### Good Example
+
+```typescript
+import { Duration } from "effect";
+
+// Create durations using helpers
+const oneSecond = Duration.seconds(1);
+const fiveMinutes = Duration.minutes(5);
+const twoHours = Duration.hours(2);
+
+// Add, subtract, and compare durations
+const total = Duration.sum(oneSecond, fiveMinutes); // 5 min 1 sec
+const isLonger = Duration.greaterThan(twoHours, fiveMinutes); // true
+
+// Convert to milliseconds or human-readable format
+const ms = Duration.toMillis(fiveMinutes); // 300000
+const readable = Duration.format(oneSecond); // "1s"
+
+```
+
+**Explanation:**  
+- `Duration` is immutable and type-safe.
+- Use helpers for common intervals and arithmetic for composition.
+- Prefer `Duration` over raw numbers for all time-based logic.
+
+### Anti-Pattern
+
+Using raw numbers (e.g., `5000` for 5 seconds) for time intervals, which is error-prone, hard to read, and less maintainable.
+
+### Explanation
+
+Working with raw numbers for time intervals (e.g., milliseconds) is error-prone and hard to read.  
+`Duration` provides a clear, expressive API for modeling time spans, improving code safety and maintainability.
+
+---
+
 ## Retry Operations Based on Specific Errors
 
 **Rule:** Use predicate-based retry policies to retry an operation only for specific, recoverable errors.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Error Management
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -7882,7 +7882,7 @@ By adding a predicate to your retry schedule, you gain fine-grained control over
 
 **Skill Level:** beginner
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -7965,7 +7965,7 @@ Not all pipelines are designed to produce a final list of values. Often, the goa
 
 **Skill Level:** advanced
 
-**Use Cases:** Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -8080,7 +8080,7 @@ The returned `Fiber` object is your remote control for the background task. You 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Concurrency
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -8153,7 +8153,7 @@ Instead of waiting for Task A to finish before starting Task B, `Effect.all` sta
 
 **Skill Level:** beginner
 
-**Use Cases:** Resource Management, File Handling, Database Connections, Network Requests
+**Use Cases:** resource-management
 
 ### Good Example
 
@@ -8220,7 +8220,7 @@ This pattern is the foundation of resource safety in Effect. It provides a compo
 
 **Skill Level:** beginner
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -8378,7 +8378,7 @@ Using `Http.response.json` is superior because:
 
 **Skill Level:** intermediate
 
-**Use Cases:** Combinators, Sequencing, Composition, Side Effects
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -8440,7 +8440,7 @@ All while preserving composability, error handling, and type safety.
 
 **Skill Level:** beginner
 
-**Use Cases:** Project Setup & Execution
+**Use Cases:** project-setup--execution
 
 ### Good Example
 
@@ -8481,7 +8481,7 @@ features. Using TypeScript's `strict` mode is non-negotiable.
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -8613,7 +8613,7 @@ Understanding that Effect was built specifically to solve these problems is key 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Tooling and Debugging
+**Use Cases:** tooling-and-debugging
 
 ### Good Example
 
@@ -8678,7 +8678,7 @@ This tool essentially makes the compiler's knowledge visible at a glance, reduci
 
 **Skill Level:** advanced
 
-**Use Cases:** Tooling and Debugging
+**Use Cases:** tooling-and-debugging
 
 ### Good Example
 
@@ -8738,69 +8738,11 @@ By providing this live, ground-truth context, you transform your AI from a gener
 
 ## Trace Operations Across Services with Spans
 
-**Rule:** Use Effect.withSpan to create and annotate tracing spans for operations, enabling distributed tracing and performance analysis.
-
-**Skill Level:** intermediate
-
-**Use Cases:** Observability, Tracing, Performance, Debugging
-
-### Good Example
-
-```typescript
-import { Effect } from "effect";
-
-// Trace a database query with a custom span
-const fetchUser = Effect.sync(() => {
-  // ...fetch user from database
-  return { id: 1, name: "Alice" };
-}).pipe(Effect.withSpan("db.fetchUser"));
-
-// Trace an HTTP request with additional attributes
-const fetchData = Effect.tryPromise({
-  try: () => fetch("https://api.example.com/data").then((res) => res.json()),
-  catch: (err) => `Network error: ${String(err)}`,
-}).pipe(
-  Effect.withSpan("http.fetchData", {
-    attributes: { url: "https://api.example.com/data" },
-  })
-);
-
-// Use spans in a workflow
-const program = Effect.gen(function* () {
-  yield* Effect.log("Starting workflow").pipe(
-    Effect.withSpan("workflow.start")
-  );
-  const user = yield* fetchUser;
-  yield* Effect.log(`Fetched user: ${user.name}`).pipe(
-    Effect.withSpan("workflow.end")
-  );
-});
-
-```
-
-**Explanation:**  
-- `Effect.withSpan` creates a tracing span around an operation.
-- Spans can be named and annotated with attributes for richer context.
-- Tracing enables distributed observability and performance analysis.
-
-### Anti-Pattern
-
-Relying only on logs or metrics for performance analysis, or lacking visibility into the flow of requests and operations across services.
-
-### Explanation
-
-Tracing spans help you understand the flow and timing of operations, especially in distributed systems or complex workflows.  
-They allow you to pinpoint bottlenecks, visualize dependencies, and correlate logs and metrics with specific requests.
-
----
-
-## Trace Operations Across Services with Spans
-
 **Rule:** Use Effect.withSpan to create custom tracing spans for important operations.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Observability
+**Use Cases:** observability
 
 ### Good Example
 
@@ -8902,13 +8844,71 @@ Effect's tracing is built on OpenTelemetry, the industry standard, so it integra
 
 ---
 
+## Trace Operations Across Services with Spans
+
+**Rule:** Use Effect.withSpan to create and annotate tracing spans for operations, enabling distributed tracing and performance analysis.
+
+**Skill Level:** intermediate
+
+**Use Cases:** observability
+
+### Good Example
+
+```typescript
+import { Effect } from "effect";
+
+// Trace a database query with a custom span
+const fetchUser = Effect.sync(() => {
+  // ...fetch user from database
+  return { id: 1, name: "Alice" };
+}).pipe(Effect.withSpan("db.fetchUser"));
+
+// Trace an HTTP request with additional attributes
+const fetchData = Effect.tryPromise({
+  try: () => fetch("https://api.example.com/data").then((res) => res.json()),
+  catch: (err) => `Network error: ${String(err)}`,
+}).pipe(
+  Effect.withSpan("http.fetchData", {
+    attributes: { url: "https://api.example.com/data" },
+  })
+);
+
+// Use spans in a workflow
+const program = Effect.gen(function* () {
+  yield* Effect.log("Starting workflow").pipe(
+    Effect.withSpan("workflow.start")
+  );
+  const user = yield* fetchUser;
+  yield* Effect.log(`Fetched user: ${user.name}`).pipe(
+    Effect.withSpan("workflow.end")
+  );
+});
+
+```
+
+**Explanation:**  
+- `Effect.withSpan` creates a tracing span around an operation.
+- Spans can be named and annotated with attributes for richer context.
+- Tracing enables distributed observability and performance analysis.
+
+### Anti-Pattern
+
+Relying only on logs or metrics for performance analysis, or lacking visibility into the flow of requests and operations across services.
+
+### Explanation
+
+Tracing spans help you understand the flow and timing of operations, especially in distributed systems or complex workflows.  
+They allow you to pinpoint bottlenecks, visualize dependencies, and correlate logs and metrics with specific requests.
+
+---
+
 ## Transform Data During Validation with Schema
 
 **Rule:** Use Schema.transform to safely convert data types during the validation and parsing process.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -9037,7 +9037,7 @@ For transformations that can fail (like creating a branded type), you can use `S
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9123,7 +9123,7 @@ returns an `Effect`.
 
 **Skill Level:** beginner
 
-**Use Cases:** Combinators, Composition
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9173,7 +9173,7 @@ The same mental model applies across all major Effect types.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building Data Pipelines
+**Use Cases:** building-data-pipelines
 
 ### Good Example
 
@@ -9315,7 +9315,7 @@ Calling paginated APIs is a classic programming challenge. It often involves wri
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Type Classes, Equality, Ordering, Hashing
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -9364,7 +9364,7 @@ This is essential for using your types in sets, maps, and for sorting or dedupli
 
 **Skill Level:** advanced
 
-**Use Cases:** Concurrency, Core Concepts
+**Use Cases:** concurrency
 
 ### Good Example
 
@@ -9448,7 +9448,7 @@ When you use operators like `Effect.fork` or `Effect.all`, you are creating new 
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9543,7 +9543,7 @@ This approach has several key benefits:
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9589,7 +9589,7 @@ an `Effect` is just a description of work, like a recipe waiting for a chef.
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9681,7 +9681,7 @@ This turns the TypeScript compiler into a powerful assistant that ensures you've
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9775,7 +9775,7 @@ you to see the flow of data transformations in a clear, linear fashion.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Collections, Performance
+**Use Cases:** observability
 
 ### Good Example
 
@@ -9819,7 +9819,7 @@ It avoids the pitfalls of mutable arrays and is designed for use in concurrent a
 
 **Skill Level:** intermediate
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -9895,7 +9895,7 @@ JavaScript's `Array` is a mutable data structure. Every time you perform an "imm
 
 **Skill Level:** intermediate
 
-**Use Cases:** Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -10018,7 +10018,7 @@ and debug.
 
 **Skill Level:** intermediate
 
-**Use Cases:** Testing
+**Use Cases:** testing
 
 ### Good Example
 
@@ -10074,7 +10074,7 @@ The `.Default` layer is the canonical way to provide a service in a test environ
 
 **Skill Level:** intermediate
 
-**Use Cases:** Building APIs
+**Use Cases:** building-apis
 
 ### Good Example
 
@@ -10301,7 +10301,7 @@ Using `Http.request.schemaBodyJson` offers several major advantages:
 
 **Skill Level:** intermediate
 
-**Use Cases:** Branded Types, Domain Modeling, Validation, Parsing
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -10355,7 +10355,7 @@ While branding types at the type level prevents accidental misuse, runtime valid
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Numeric Precision, Financial, Scientific
+**Use Cases:** modeling-data
 
 ### Good Example
 
@@ -10400,7 +10400,7 @@ JavaScript's `number` type is a floating-point double, which can introduce subtl
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Time, Date, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -10453,7 +10453,7 @@ JavaScript's native `Date` is mutable, not time-zone-aware, and can be error-pro
 
 **Skill Level:** intermediate
 
-**Use Cases:** Data Types, Collections, Set Operations
+**Use Cases:** modeling-data
 
 ### Good Example
 
@@ -10499,7 +10499,7 @@ It avoids the pitfalls of mutable JavaScript `Set` and is optimized for use in E
 
 **Skill Level:** beginner
 
-**Use Cases:** Data Types, Arrays, Structural Equality, Collections
+**Use Cases:** modeling-data
 
 ### Good Example
 
@@ -10544,7 +10544,7 @@ JavaScript arrays are mutable and compared by reference, which can lead to bugs 
 
 **Skill Level:** beginner
 
-**Use Cases:** Data Types, Tuples, Structural Equality, Domain Modeling
+**Use Cases:** domain-modeling
 
 ### Good Example
 
@@ -10589,7 +10589,7 @@ JavaScript arrays are mutable and compared by reference, which can lead to bugs 
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -10729,7 +10729,7 @@ you to leverage the massive `async/await` ecosystem safely.
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -10842,7 +10842,7 @@ the Effect's error channel.
 
 **Skill Level:** beginner
 
-**Use Cases:** Constructors, Error Handling, Async, Interop
+**Use Cases:** error-management
 
 ### Good Example
 
@@ -10883,7 +10883,7 @@ This eliminates the need for try/catch blocks and makes error handling explicit 
 
 **Skill Level:** beginner
 
-**Use Cases:** Core Concepts
+**Use Cases:** core-concepts
 
 ### Good Example
 
@@ -11072,7 +11072,7 @@ readable sequence of operations, avoiding the nested "callback hell" of
 
 **Skill Level:** intermediate
 
-**Use Cases:** Testing
+**Use Cases:** testing
 
 ### Good Example
 

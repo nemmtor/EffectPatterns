@@ -1,44 +1,4 @@
-# Domain Modeling Patterns
-
-## Accumulate Multiple Errors with Either
-
-Use Either to model computations that may fail, making errors explicit and type-safe.
-
-### Example
-
-```typescript
-import { Either } from "effect";
-
-// Create a Right (success) or Left (failure)
-const success = Either.right(42); // Either<never, number>
-const failure = Either.left("Something went wrong"); // Either<string, never>
-
-// Pattern match on Either
-const result = success.pipe(
-  Either.match({
-    onLeft: (err) => `Error: ${err}`,
-    onRight: (value) => `Value: ${value}`,
-  })
-); // string
-
-// Combine multiple Eithers and accumulate errors
-const e1 = Either.right(1);
-const e2 = Either.left("fail1");
-const e3 = Either.left("fail2");
-
-const all = Either.all([e1, e2, e3]); // Either<string, [number, never, never]>
-const rights = [e1, e2, e3].filter(Either.isRight); // Right values only
-const lefts = [e1, e2, e3].filter(Either.isLeft); // Left values only
-
-```
-
-**Explanation:**  
-- `Either.right(value)` represents success.
-- `Either.left(error)` represents failure.
-- Pattern matching ensures all cases are handled.
-- You can accumulate errors or results from multiple Eithers.
-
----
+# domain-modeling Patterns
 
 ## Accumulate Multiple Errors with Either
 
@@ -132,6 +92,46 @@ Effect.runSync(program);
 ````
 
 ---
+
+---
+
+## Accumulate Multiple Errors with Either
+
+Use Either to model computations that may fail, making errors explicit and type-safe.
+
+### Example
+
+```typescript
+import { Either } from "effect";
+
+// Create a Right (success) or Left (failure)
+const success = Either.right(42); // Either<never, number>
+const failure = Either.left("Something went wrong"); // Either<string, never>
+
+// Pattern match on Either
+const result = success.pipe(
+  Either.match({
+    onLeft: (err) => `Error: ${err}`,
+    onRight: (value) => `Value: ${value}`,
+  })
+); // string
+
+// Combine multiple Eithers and accumulate errors
+const e1 = Either.right(1);
+const e2 = Either.left("fail1");
+const e3 = Either.left("fail2");
+
+const all = Either.all([e1, e2, e3]); // Either<string, [number, never, never]>
+const rights = [e1, e2, e3].filter(Either.isRight); // Right values only
+const lefts = [e1, e2, e3].filter(Either.isLeft); // Left values only
+
+```
+
+**Explanation:**  
+- `Either.right(value)` represents success.
+- `Either.left(error)` represents failure.
+- Pattern matching ensures all cases are handled.
+- You can accumulate errors or results from multiple Eithers.
 
 ---
 
@@ -411,42 +411,77 @@ Effect.runPromise(
 
 ---
 
-## Model Optional Values Safely with Option
+## Handling Specific Errors with catchTag and catchTags
 
-Use Option to model values that may be present or absent, making absence explicit and type-safe.
+Use catchTag and catchTags to handle specific tagged error types in the Effect failure channel, providing targeted recovery logic.
 
 ### Example
 
 ```typescript
-import { Option } from "effect";
+import { Effect, Data } from "effect";
 
-// Create an Option from a value
-const someValue = Option.some(42); // Option<number>
-const noValue = Option.none(); // Option<never>
+// Define tagged error types
+class NotFoundError extends Data.TaggedError("NotFoundError")<{}> {}
+class ValidationError extends Data.TaggedError("ValidationError")<{ message: string }> {}
 
-// Safely convert a nullable value to Option
-const fromNullable = Option.fromNullable(Math.random() > 0.5 ? "hello" : null); // Option<string>
+type MyError = NotFoundError | ValidationError;
 
-// Pattern match on Option
-const result = someValue.pipe(
-  Option.match({
-    onNone: () => "No value",
-    onSome: (n) => `Value: ${n}`,
+// Effect: Handle only ValidationError, let others propagate
+const effect = Effect.fail(new ValidationError({ message: "Invalid input" }) as MyError).pipe(
+  Effect.catchTag("ValidationError", (err) =>
+    Effect.succeed(`Recovered from validation error: ${err.message}`)
+  )
+); // Effect<string>
+
+// Effect: Handle multiple error tags
+const effect2 = Effect.fail(new NotFoundError() as MyError).pipe(
+  Effect.catchTags({
+    NotFoundError: () => Effect.succeed("Handled not found!"),
+    ValidationError: (err) => Effect.succeed(`Handled validation: ${err.message}`),
   })
-); // string
+); // Effect<string>
+```
 
-// Use Option in a workflow
-function findUser(id: number): Option.Option<{ id: number; name: string }> {
-  return id === 1 ? Option.some({ id, name: "Alice" }) : Option.none();
-}
+**Explanation:**  
+- `catchTag` lets you recover from a specific tagged error type.
+- `catchTags` lets you handle multiple tagged error types in one place.
+- Unhandled errors continue to propagate, preserving error safety.
+
+---
+
+## Matching Tagged Unions with matchTag and matchTags
+
+Use matchTag and matchTags to handle specific cases of tagged unions or custom error types in a declarative, type-safe way.
+
+### Example
+
+```typescript
+import { Data, Effect } from "effect";
+
+// Define a tagged error type
+class NotFoundError extends Data.TaggedError("NotFoundError")<{}> {}
+class ValidationError extends Data.TaggedError("ValidationError")<{
+  message: string;
+}> {}
+
+type MyError = NotFoundError | ValidationError;
+
+// Effect: Match on specific error tags
+const effect: Effect.Effect<string, never, never> = Effect.fail(
+  new ValidationError({ message: "Invalid input" }) as MyError
+).pipe(
+  Effect.catchTags({
+    NotFoundError: () => Effect.succeed("Not found!"),
+    ValidationError: (err) =>
+      Effect.succeed(`Validation failed: ${err.message}`),
+  })
+); // Effect<string>
 
 ```
 
 **Explanation:**  
-- `Option.some(value)` represents a present value.
-- `Option.none()` represents absence.
-- `Option.fromNullable` safely lifts nullable values into Option.
-- Pattern matching ensures all cases are handled.
+- `matchTag` lets you branch on the specific tag of a tagged union or custom error type.
+- This is safer and more maintainable than using `instanceof` or manual property checks.
 
 ---
 
@@ -493,6 +528,45 @@ const program = Effect.gen(function* () {
 
 Effect.runPromise(program);
 ```
+
+---
+
+## Model Optional Values Safely with Option
+
+Use Option to model values that may be present or absent, making absence explicit and type-safe.
+
+### Example
+
+```typescript
+import { Option } from "effect";
+
+// Create an Option from a value
+const someValue = Option.some(42); // Option<number>
+const noValue = Option.none(); // Option<never>
+
+// Safely convert a nullable value to Option
+const fromNullable = Option.fromNullable(Math.random() > 0.5 ? "hello" : null); // Option<string>
+
+// Pattern match on Option
+const result = someValue.pipe(
+  Option.match({
+    onNone: () => "No value",
+    onSome: (n) => `Value: ${n}`,
+  })
+); // string
+
+// Use Option in a workflow
+function findUser(id: number): Option.Option<{ id: number; name: string }> {
+  return id === 1 ? Option.some({ id, name: "Alice" }) : Option.none();
+}
+
+```
+
+**Explanation:**  
+- `Option.some(value)` represents a present value.
+- `Option.none()` represents absence.
+- `Option.fromNullable` safely lifts nullable values into Option.
+- Pattern matching ensures all cases are handled.
 
 ---
 
@@ -766,6 +840,42 @@ const errorResult = Schema.decode(Email)("invalid-email"); // Fails
 ```
 
 ---
+
+---
+
+## Type Classes for Equality, Ordering, and Hashing with Data.Class
+
+Use Data.Class to define and derive type classes for your data types, supporting composable equality, ordering, and hashing.
+
+### Example
+
+```typescript
+import { Data, Equal, HashSet } from "effect";
+
+// Define custom data types with structural equality
+const user1 = Data.struct({ id: 1, name: "Alice" });
+const user2 = Data.struct({ id: 1, name: "Alice" });
+const user3 = Data.struct({ id: 2, name: "Bob" });
+
+// Data.struct provides automatic structural equality
+console.log(Equal.equals(user1, user2)); // true (same structure)
+console.log(Equal.equals(user1, user3)); // false (different values)
+
+// Use in a HashSet (works because Data.struct implements Equal)
+const set = HashSet.make(user1);
+console.log(HashSet.has(set, user2)); // true (structural equality)
+
+// Create an array and use structural equality
+const users = [user1, user3];
+console.log(users.some((u) => Equal.equals(u, user2))); // true
+
+```
+
+**Explanation:**  
+- `Data.Class.getEqual` derives an equality type class for your data type.
+- `Data.Class.getOrder` derives an ordering type class, useful for sorting.
+- `Data.Class.getHash` derives a hash function for use in sets and maps.
+- These type classes make your types fully compatible with Effect’s collections and algorithms.
 
 ---
 
